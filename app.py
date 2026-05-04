@@ -42,6 +42,17 @@ df = df_raw.rename(columns={
     "lon":              "lon",
 }).copy()
 
+# Find the year column flexibly in case rename didn't catch it
+if "year" not in df.columns:
+    for c in df.columns:
+        if "season" in c.lower() or "year" in c.lower():
+            df = df.rename(columns={c: "year"})
+            break
+
+if "year" not in df.columns:
+    st.error(f"Could not find a year/season column. Columns available: {df.columns.tolist()}")
+    st.stop()
+
 df["year"] = pd.to_numeric(df["year"], errors="coerce")
 df = df.dropna(subset=["year"])
 df["year"] = df["year"].astype(int)
