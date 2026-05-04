@@ -19,37 +19,15 @@ st.markdown("""
     .stApp { background-color: #f4f8fb; color: #1a1a1a !important; }
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; background-color: #f4f8fb; }
     
-    /* Force all text dark */
-    p, span, div, label, h1, h2, h3, h4, h5 { color: #1a1a1a !important; }
-    
-    /* Sidebar text */
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] div { color: #1a1a1a !important; }
-    [data-testid="stSidebar"] .stMarkdown { color: #1a1a1a !important; }
-    
-    /* Slider labels */
-    [data-testid="stSlider"] span { color: #1a1a1a !important; }
-    
-    /* Multiselect text */
-    [data-testid="stMultiSelect"] span { color: #1a1a1a !important; }
+    /* Sidebar text - dark */
+    [data-testid="stSidebar"] { color: #1a1a1a; }
     [data-baseweb="tag"] span { color: white !important; }
-    
-    /* Radio button labels */
-    [data-testid="stRadio"] label span { color: #1a1a1a !important; }
-    
-    /* Select slider */
-    [data-testid="stSelectSlider"] span { color: #1a1a1a !important; }
     
     /* Tab text */
     div[data-testid="stTabs"] button p { color: #546e7a !important; }
     div[data-testid="stTabs"] button[aria-selected="true"] p { color: #006064 !important; }
     
-    /* Metric/dataframe text */
-    [data-testid="stDataFrame"] { color: #1a1a1a !important; }
-    
-    /* Caption text */
+    /* Caption */
     [data-testid="stCaptionContainer"] p { color: #607d8b !important; font-size: 0.8rem !important; }
 
     /* Hero banner — teal/ocean theme */
@@ -130,6 +108,22 @@ st.markdown("""
     [data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Global Plotly theme ──────────────────────────────────────────────────────
+import plotly.io as pio
+pio.templates["clean_light"] = go.layout.Template(
+    layout=go.Layout(
+        font=dict(family="Arial, sans-serif", color="#1a1a1a", size=12),
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
+        colorway=["#006064","#2E7D32","#F57F17","#B71C1C","#90A4AE","#558B2F"],
+        title=dict(font=dict(color="#006064", size=15)),
+        legend=dict(font=dict(color="#1a1a1a"), bgcolor="rgba(255,255,255,0.8)"),
+        xaxis=dict(gridcolor="#f0f0f0", linecolor="#cfd8dc", tickfont=dict(color="#1a1a1a")),
+        yaxis=dict(gridcolor="#f0f0f0", linecolor="#cfd8dc", tickfont=dict(color="#1a1a1a")),
+    )
+)
+pio.templates.default = "clean_light"
 
 # ── Colour palette ─────────────────────────────────────────────────────────────
 COLOURS = {
@@ -336,7 +330,7 @@ with tab1:
             title=dict(text="Quality Rating Distribution", font_size=15, font_color="#006064"),
             height=370,
             margin=dict(t=50, b=20, l=10, r=10),
-            legend=dict(orientation="h", yanchor="top", y=-0.05),
+            legend=dict(orientation="h", yanchor="top", y=-0.05, font=dict(color="#1a1a1a")),
             paper_bgcolor="#ffffff",
             plot_bgcolor="#ffffff",
         )
@@ -354,11 +348,12 @@ with tab1:
             title=dict(text="Sites by Water Type & Quality", font_size=15, font_color="#006064"),
             height=370,
             margin=dict(t=50, b=20, l=10, r=10),
-            legend=dict(orientation="h", yanchor="top", y=-0.05),
+            legend=dict(orientation="h", yanchor="top", y=-0.05, font=dict(color="#1a1a1a")),
             paper_bgcolor="#ffffff",
             plot_bgcolor="#ffffff",
-            xaxis=dict(showgrid=False),
-            yaxis=dict(gridcolor="#f0f0f0"),
+            font=dict(color="#1a1a1a"),
+            xaxis=dict(showgrid=False, color="#1a1a1a"),
+            yaxis=dict(gridcolor="#f0f0f0", color="#1a1a1a"),
         )
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -387,7 +382,7 @@ with tab2:
         title=dict(text="Bathing Water Quality Trend (1990–2024)", font_size=15, font_color="#006064"),
         height=420,
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None, font=dict(color="#1a1a1a")),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         xaxis=dict(showgrid=False, title="Year"),
@@ -449,7 +444,7 @@ with tab3:
             title=dict(text=f"Bathing Water Quality by Country — {sel_year}", font_size=15, font_color="#006064"),
             height=430,
             xaxis_tickangle=-45,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None, font=dict(color="#1a1a1a")),
             paper_bgcolor="#ffffff",
             plot_bgcolor="#ffffff",
             xaxis=dict(showgrid=False),
@@ -535,7 +530,7 @@ with tab4:
         title=dict(text=f"Europe — {title} ({year_range[0]}–{year_range[1]})", font_size=15, font_color="#006064"),
         height=560,
         margin=dict(t=50, b=10, l=0, r=0),
-        paper_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="#ffffff",
         coloraxis_colorbar=dict(title=title, thickness=14),
         geo=dict(
             bgcolor="#f4f8fb",
