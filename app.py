@@ -15,121 +15,44 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Force light theme + dark text everywhere */
-    .stApp { background-color: #f4f8fb; color: #1a1a1a !important; }
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; background-color: #f4f8fb; }
-    
-    /* Sidebar text - dark */
-    [data-testid="stSidebar"] { color: #1a1a1a; }
-    [data-baseweb="tag"] span { color: white !important; }
-    
-    /* Tab text */
-    div[data-testid="stTabs"] button p { color: #546e7a !important; }
-    div[data-testid="stTabs"] button[aria-selected="true"] p { color: #006064 !important; }
-    
-    /* Caption */
-    [data-testid="stCaptionContainer"] p { color: #607d8b !important; font-size: 0.8rem !important; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
 
-    /* Hero banner — teal/ocean theme */
     .hero {
         background: linear-gradient(135deg, #006064 0%, #00838f 60%, #00acc1 100%);
-        border-radius: 16px;
-        padding: 2.2rem 2.5rem;
-        margin-bottom: 1.5rem;
-        color: white;
+        border-radius: 16px; padding: 2.2rem 2.5rem; margin-bottom: 1.5rem;
     }
-    .hero h1 {
-        font-size: 2.1rem; font-weight: 800; margin: 0 0 0.4rem 0;
-        letter-spacing: -0.5px; color: white;
-    }
-    .hero p { font-size: 1rem; margin: 0; opacity: 0.92; color: white; }
+    .hero h1 { font-size: 2.1rem; font-weight: 800; margin: 0 0 0.4rem 0; color: white !important; }
+    .hero p  { font-size: 1rem; margin: 0; opacity: 0.92; color: white !important; }
     .hero .badge {
         display: inline-block; background: rgba(255,255,255,0.2);
         border-radius: 20px; padding: 3px 14px; font-size: 0.78rem;
-        margin-top: 0.9rem; margin-right: 6px; color: white;
+        margin-top: 0.9rem; margin-right: 6px; color: white !important;
         border: 1px solid rgba(255,255,255,0.3);
     }
 
-    /* KPI cards */
     .kpi-card {
-        background: white;
-        border-radius: 14px;
-        padding: 1.3rem 1.5rem;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-        border-top: 4px solid #00838f;
-        height: 100%;
+        background: white; border-radius: 14px; padding: 1.3rem 1.5rem;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.07); border-top: 4px solid #00838f;
     }
     .kpi-card.green  { border-top-color: #2e7d32; }
     .kpi-card.red    { border-top-color: #c62828; }
     .kpi-card.orange { border-top-color: #e65100; }
-    .kpi-label { font-size: 0.72rem; font-weight: 700; color: #607d8b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-    .kpi-value { font-size: 2.1rem; font-weight: 800; color: #1a1a1a; line-height: 1; }
-    .kpi-sub   { font-size: 0.75rem; color: #90a4ae; margin-top: 5px; }
+    .kpi-label { font-size: 0.72rem; font-weight: 700; color: #607d8b !important; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .kpi-value { font-size: 2.1rem; font-weight: 800; color: #1a1a1a !important; line-height: 1; }
+    .kpi-sub   { font-size: 0.75rem; color: #90a4ae !important; margin-top: 5px; }
 
-    /* Section headers */
     .section-header {
-        font-size: 1.1rem; font-weight: 700; color: #00695c;
-        border-bottom: 2px solid #b2ebf2; padding-bottom: 0.5rem;
-        margin-bottom: 1.2rem; margin-top: 0.5rem;
+        font-size: 1.1rem; font-weight: 700; color: #006064 !important;
+        border-bottom: 2px solid #b2ebf2; padding-bottom: 0.5rem; margin-bottom: 1.2rem;
     }
 
-    /* Insight box */
     .insight-box {
-        background: #e0f7fa; border-radius: 12px;
-        padding: 1rem 1.4rem; margin-top: 1rem;
-        border-left: 4px solid #00838f;
-        font-size: 0.88rem; color: #004d40;
+        background: #e0f7fa; border-radius: 12px; padding: 1rem 1.4rem; margin-top: 1rem;
+        border-left: 4px solid #00838f; font-size: 0.88rem; color: #004d40 !important;
     }
-    .insight-box b { color: #006064; }
+    .insight-box b { color: #006064 !important; }
 
-    /* Chart wrapper — white card */
-    .chart-wrap {
-        background: white; border-radius: 14px;
-        padding: 1rem 0.5rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        margin-bottom: 1rem;
-    }
-
-    /* Tabs */
-    div[data-testid="stTabs"] button {
-        font-weight: 600; font-size: 0.88rem; color: #546e7a;
-    }
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        color: #006064;
-    }
-
-    /* Sidebar - light with dark text */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #e0f7fa 0%, #f4f8fb 100%) !important;
-        border-right: 1px solid #b2ebf2;
-    }
-    [data-testid="stSidebar"] * { color: #1a1a1a !important; }
-    [data-testid="stSidebar"] .stMarkdown p { color: #1a1a1a !important; }
-    [data-testid="stSidebar"] h3 { color: #006064 !important; }
-    [data-baseweb="tag"] span { color: white !important; }
-    [data-baseweb="tag"] { background-color: #006064 !important; }
-    
-    /* Multiselect pills text */
-    [data-baseweb="multi-select"] span { color: #1a1a1a !important; }
-    
-    /* All streamlit widget labels */
-    .stSlider label, .stMultiSelect label, .stRadio label, .stSelectSlider label {
-        color: #1a1a1a !important;
-    }
-    
-    /* Slider value text */
-    [data-testid="stSlider"] [data-testid="stMarkdownContainer"] p { color: #1a1a1a !important; }
-    
-    /* Dataframe - force light theme */
-    [data-testid="stDataFrame"] > div { background: white !important; }
-    .dvn-scroller { background: white !important; }
-    [data-testid="stDataFrame"] * { color: #1a1a1a !important; }
-    .stDataFrame thead tr th { background: #e0f7fa !important; color: #006064 !important; font-weight: 700 !important; }
-    .stDataFrame tbody tr td { color: #1a1a1a !important; background: white !important; }
-    .stDataFrame tbody tr:nth-child(even) td { background: #f4f8fb !important; }
-
-    /* Dataframe */
-    [data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; }
+    div[data-testid="stTabs"] button p { font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
