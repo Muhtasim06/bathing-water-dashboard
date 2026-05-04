@@ -22,7 +22,20 @@ DATA_URL = "https://sdi.eea.europa.eu/datashare/s/J86aarkSmCMXpkc/download?path=
 
 @st.cache_data(show_spinner="Loading dataset… this may take a moment ☕")
 def load_data():
-    df = pd.read_excel(DATA_URL, engine="openpyxl")
+    import io, requests
+    r = requests.get(DATA_URL)
+    xl = pd.ExcelFile(io.BytesIO(r.content), engine="openpyxl")
+    # Pick the sheet with the most columns (skip metadata sheets)
+    best_sheet, best_cols = None, 0
+    for sheet in xl.sheet_names:
+        try:
+            tmp = xl.parse(sheet, nrows=2)
+            if len(tmp.columns) > best_cols:
+                best_cols = len(tmp.columns)
+                best_sheet = sheet
+        except:
+            pass
+    df = xl.parse(best_sheet)
     return df
 
 try:
