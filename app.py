@@ -15,9 +15,42 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Force light theme for the whole app */
-    .stApp { background-color: #f4f8fb; }
+    /* Force light theme + dark text everywhere */
+    .stApp { background-color: #f4f8fb; color: #1a1a1a !important; }
     .block-container { padding-top: 1.5rem; padding-bottom: 2rem; background-color: #f4f8fb; }
+    
+    /* Force all text dark */
+    p, span, div, label, h1, h2, h3, h4, h5 { color: #1a1a1a !important; }
+    
+    /* Sidebar text */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] div { color: #1a1a1a !important; }
+    [data-testid="stSidebar"] .stMarkdown { color: #1a1a1a !important; }
+    
+    /* Slider labels */
+    [data-testid="stSlider"] span { color: #1a1a1a !important; }
+    
+    /* Multiselect text */
+    [data-testid="stMultiSelect"] span { color: #1a1a1a !important; }
+    [data-baseweb="tag"] span { color: white !important; }
+    
+    /* Radio button labels */
+    [data-testid="stRadio"] label span { color: #1a1a1a !important; }
+    
+    /* Select slider */
+    [data-testid="stSelectSlider"] span { color: #1a1a1a !important; }
+    
+    /* Tab text */
+    div[data-testid="stTabs"] button p { color: #546e7a !important; }
+    div[data-testid="stTabs"] button[aria-selected="true"] p { color: #006064 !important; }
+    
+    /* Metric/dataframe text */
+    [data-testid="stDataFrame"] { color: #1a1a1a !important; }
+    
+    /* Caption text */
+    [data-testid="stCaptionContainer"] p { color: #607d8b !important; font-size: 0.8rem !important; }
 
     /* Hero banner — teal/ocean theme */
     .hero {
