@@ -3,37 +3,26 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# ── Page config ──────────────────────────────────────────────────────────────
+# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="European Bathing Water Quality",
     page_icon="🌊",
     layout="wide",
 )
 
-# ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .main { background-color: #f0f6fb; }
     .block-container { padding-top: 2rem; }
-    h1 { color: #0a4c73; }
-    h2, h3 { color: #1a6fa3; }
-    .metric-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-        text-align: center;
-    }
+    [data-testid="stMetricValue"] { font-size: 2rem; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 DATA_URL = "https://sdi.eea.europa.eu/datashare/s/J86aarkSmCMXpkc/download?path=%2F&files=bw_assessment_eea_datahub_1990_2024.xlsx"
 
-@st.cache_data(show_spinner="Loading dataset…")
+@st.cache_data(show_spinner="Loading dataset… this may take a moment ☕")
 def load_data():
     df = pd.read_excel(DATA_URL, engine="openpyxl")
-    df.columns = df.columns.str.strip()
     return df
 
 try:
@@ -42,236 +31,182 @@ except Exception as e:
     st.error(f"Could not load data: {e}")
     st.stop()
 
-# ── Inspect and normalise columns ─────────────────────────────────────────────
-# Show columns in sidebar for debugging (remove later)
-with st.expander("🔍 Raw column names (debug)"):
-    st.write(df_raw.columns.tolist())
-    st.write(df_raw.head(3))
+# ── Map exact column names ────────────────────────────────────────────────────
+df = df_raw.rename(columns={
+    "countryCode":      "country",
+    "season":           "year",
+    "quality":          "quality",
+    "bathingWaterType": "water_type",
+    "bathingWaterName": "site_name",
+    "lat":              "lat",
+    "lon":              "lon",
+}).copy()
 
-# Lowercase all column names for easier handling
-df_raw.columns = [c.lower().strip() for c in df_raw.columns]
+df["year"] = pd.to_numeric(df["year"], errors="coerce")
+df = df.dropna(subset=["year"])
+df["year"] = df["year"].astype(int)
+df["quality"] = df["quality"].astype(str).str.strip().str.title()
 
-# Try to find the key columns automatically
-def find_col(df, candidates):
-    for c in candidates:
-        for col in df.columns:
-            if c in col:
-                return col
-    return None
+# Colour map
+COLOURS = {
+    "Excellent":  "#1565C0",
+    "Good":       "#43A047",
+    "Sufficient": "#FB8C00",
+    "Poor":       "#E53935",
+}
+def q_colour(q):
+    for k, v in COLOURS.items():
+        if k.lower() in str(q).lower():
+            return v
+    return "#9E9E9E"
 
-col_country   = find_col(df_raw, ["country", "nation", "member"])
-col_year      = find_col(df_raw, ["year", "season"])
-col_quality   = find_col(df_raw, ["quality", "class", "status", "rating"])
-col_type      = find_col(df_raw, ["type", "coastal", "inland", "category"])
-col_count     = find_col(df_raw, ["count", "number", "total", "sites", "num"])
+# Country code → full name lookup
+COUNTRY_NAMES = {
+    "AT":"Austria","BE":"Belgium","BG":"Bulgaria","CY":"Cyprus","CZ":"Czech Republic",
+    "DE":"Germany","DK":"Denmark","EE":"Estonia","EL":"Greece","ES":"Spain",
+    "FI":"Finland","FR":"France","HR":"Croatia","HU":"Hungary","IE":"Ireland",
+    "IT":"Italy","LT":"Lithuania","LU":"Luxembourg","LV":"Latvia","MT":"Malta",
+    "NL":"Netherlands","PL":"Poland","PT":"Portugal","RO":"Romania","SE":"Sweden",
+    "SI":"Slovenia","SK":"Slovakia","AL":"Albania","ME":"Montenegro","RS":"Serbia",
+    "TR":"Turkey","CH":"Switzerland","NO":"Norway","IS":"Iceland","LI":"Liechtenstein",
+}
 
-# Map found columns to standard names
-rename = {}
-if col_country: rename[col_country] = "country"
-if col_year:    rename[col_year]    = "year"
-if col_quality: rename[col_quality] = "quality"
-if col_type:    rename[col_type]    = "water_type"
-if col_count:   rename[col_count]   = "count"
+# ── Sidebar filters ───────────────────────────────────────────────────────────
+st.sidebar.header("🔧 Filters")
 
-df = df_raw.rename(columns=rename).copy()
+min_y, max_y = int(df["year"].min()), int(df["year"].max())
+year_range = st.sidebar.slider("Year range", min_y, max_y, (2010, max_y))
 
-# Ensure year is numeric
-if "year" in df.columns:
-    df["year"] = pd.to_numeric(df["year"], errors="coerce")
-    df = df.dropna(subset=["year"])
-    df["year"] = df["year"].astype(int)
+countries = sorted(df["country"].dropna().unique())
+selected_countries = st.sidebar.multiselect("Countries", countries, default=countries)
 
-# ── Header ─────────────────────────────────────────────────────────────────────
+water_types = sorted(df["water_type"].dropna().unique())
+selected_types = st.sidebar.multiselect("Water type", water_types, default=water_types)
+
+qualities = sorted(df["quality"].dropna().unique())
+selected_qualities = st.sidebar.multiselect("Quality rating", qualities, default=qualities)
+
+st.sidebar.markdown("---")
+st.sidebar.caption("Data: EEA Bathing Water Directive (1990–2024)")
+
+# ── Apply filters ─────────────────────────────────────────────────────────────
+df_f = df[
+    (df["year"] >= year_range[0]) &
+    (df["year"] <= year_range[1]) &
+    (df["country"].isin(selected_countries)) &
+    (df["water_type"].isin(selected_types)) &
+    (df["quality"].isin(selected_qualities))
+]
+
+# ── Header ────────────────────────────────────────────────────────────────────
 st.title("🌊 European Bathing Water Quality Dashboard")
 st.markdown("Explore bathing water quality across Europe from **1990 to 2024**, based on data from the **European Environment Agency (EEA)**.")
 st.divider()
 
-# ── Sidebar filters ────────────────────────────────────────────────────────────
-st.sidebar.header("🔧 Filters")
-
-# Year range slider
-if "year" in df.columns:
-    min_y, max_y = int(df["year"].min()), int(df["year"].max())
-    year_range = st.sidebar.slider("Year range", min_y, max_y, (2015, max_y))
-    df_f = df[(df["year"] >= year_range[0]) & (df["year"] <= year_range[1])]
-else:
-    df_f = df.copy()
-    year_range = (None, None)
-
-# Country filter
-if "country" in df_f.columns:
-    countries = sorted(df_f["country"].dropna().unique())
-    selected_countries = st.sidebar.multiselect("Countries", countries, default=countries[:10] if len(countries) > 10 else countries)
-    if selected_countries:
-        df_f = df_f[df_f["country"].isin(selected_countries)]
-
-# Water type filter
-if "water_type" in df_f.columns:
-    types = sorted(df_f["water_type"].dropna().unique())
-    selected_type = st.sidebar.multiselect("Water type", types, default=types)
-    if selected_type:
-        df_f = df_f[df_f["water_type"].isin(selected_type)]
-
-# Quality filter
-if "quality" in df_f.columns:
-    qualities = sorted(df_f["quality"].dropna().unique())
-    selected_quality = st.sidebar.multiselect("Quality rating", qualities, default=qualities)
-    if selected_quality:
-        df_f = df_f[df_f["quality"].isin(selected_quality)]
-
-st.sidebar.markdown("---")
-st.sidebar.caption("Data: European Environment Agency (EEA) — Bathing Water Directive, Status of Bathing Water (1990–2024)")
-
-# ── KPI cards ──────────────────────────────────────────────────────────────────
+# ── KPI metrics ───────────────────────────────────────────────────────────────
 k1, k2, k3, k4 = st.columns(4)
-total_sites = len(df_f)
-n_countries = df_f["country"].nunique() if "country" in df_f.columns else "N/A"
+total    = len(df_f)
+n_ctry   = df_f["country"].nunique()
+exc_pct  = round(df_f["quality"].str.lower().str.contains("excell").sum() / total * 100, 1) if total else 0
+poor_pct = round(df_f["quality"].str.lower().str.contains("poor").sum()   / total * 100, 1) if total else 0
 
-if "quality" in df_f.columns:
-    # Try to count excellent sites — handle different naming conventions
-    excellent_mask = df_f["quality"].astype(str).str.lower().str.contains("excell")
-    poor_mask      = df_f["quality"].astype(str).str.lower().str.contains("poor")
-    pct_excellent  = round(excellent_mask.sum() / len(df_f) * 100, 1) if len(df_f) > 0 else 0
-    pct_poor       = round(poor_mask.sum()      / len(df_f) * 100, 1) if len(df_f) > 0 else 0
-else:
-    pct_excellent = pct_poor = "N/A"
-
-with k1:
-    st.metric("Total records", f"{total_sites:,}")
-with k2:
-    st.metric("Countries", n_countries)
-with k3:
-    st.metric("% Excellent quality", f"{pct_excellent}%")
-with k4:
-    st.metric("% Poor quality", f"{pct_poor}%")
+k1.metric("Total records",       f"{total:,}")
+k2.metric("Countries",           n_ctry)
+k3.metric("% Excellent quality", f"{exc_pct}%")
+k4.metric("% Poor quality",      f"{poor_pct}%")
 
 st.divider()
 
-# ── Charts ─────────────────────────────────────────────────────────────────────
-col_left, col_right = st.columns(2)
+# ── Chart 1 & 2: Donut + Coastal vs Inland ────────────────────────────────────
+col1, col2 = st.columns(2)
 
-# Chart 1: Quality rating breakdown (donut)
-with col_left:
+with col1:
     st.subheader("Quality Rating Breakdown")
-    if "quality" in df_f.columns:
-        quality_counts = df_f["quality"].value_counts().reset_index()
-        quality_counts.columns = ["Quality", "Count"]
-        colour_map = {
-            "Excellent": "#2196F3",
-            "Good":      "#4CAF50",
-            "Sufficient":"#FF9800",
-            "Poor":      "#F44336",
-        }
-        # Partial match colouring
-        def match_colour(q):
-            q_lower = str(q).lower()
-            if "excell" in q_lower: return "#2196F3"
-            if "good"   in q_lower: return "#4CAF50"
-            if "suffic" in q_lower: return "#FF9800"
-            if "poor"   in q_lower: return "#F44336"
-            return "#9E9E9E"
-        colours = [match_colour(q) for q in quality_counts["Quality"]]
-        fig1 = go.Figure(go.Pie(
-            labels=quality_counts["Quality"],
-            values=quality_counts["Count"],
-            hole=0.45,
-            marker_colors=colours,
-        ))
-        fig1.update_layout(margin=dict(t=10, b=10), height=320, legend=dict(orientation="h"))
-        st.plotly_chart(fig1, use_container_width=True)
-    else:
-        st.info("Quality column not found in dataset.")
+    qc = df_f["quality"].value_counts().reset_index()
+    qc.columns = ["Quality", "Count"]
+    fig1 = go.Figure(go.Pie(
+        labels=qc["Quality"],
+        values=qc["Count"],
+        hole=0.45,
+        marker_colors=[q_colour(q) for q in qc["Quality"]],
+    ))
+    fig1.update_layout(height=350, margin=dict(t=10, b=10),
+                       legend=dict(orientation="h", yanchor="top", y=-0.1))
+    st.plotly_chart(fig1, use_container_width=True)
 
-# Chart 2: Coastal vs Inland
-with col_right:
+with col2:
     st.subheader("Coastal vs Inland Sites")
-    if "water_type" in df_f.columns and "quality" in df_f.columns:
-        type_quality = df_f.groupby(["water_type", "quality"]).size().reset_index(name="count")
-        fig2 = px.bar(
-            type_quality, x="water_type", y="count", color="quality",
-            barmode="group",
-            color_discrete_map={q: match_colour(q) for q in type_quality["quality"].unique()},
-            labels={"water_type": "Water Type", "count": "Number of Sites", "quality": "Quality"},
-        )
-        fig2.update_layout(margin=dict(t=10, b=10), height=320, legend=dict(orientation="h"))
-        st.plotly_chart(fig2, use_container_width=True)
-    elif "water_type" in df_f.columns:
-        type_counts = df_f["water_type"].value_counts().reset_index()
-        type_counts.columns = ["Type", "Count"]
-        fig2 = px.bar(type_counts, x="Type", y="Count", color="Type")
-        fig2.update_layout(margin=dict(t=10, b=10), height=320)
-        st.plotly_chart(fig2, use_container_width=True)
-    else:
-        st.info("Water type column not found in dataset.")
-
-st.divider()
-
-# Chart 3: Trend over time
-st.subheader("📈 Quality Trend Over Time")
-if "year" in df_f.columns and "quality" in df_f.columns:
-    trend = df_f.groupby(["year", "quality"]).size().reset_index(name="count")
-    fig3 = px.line(
-        trend, x="year", y="count", color="quality",
-        color_discrete_map={q: match_colour(q) for q in trend["quality"].unique()},
-        markers=True,
-        labels={"year": "Year", "count": "Number of Sites", "quality": "Quality"},
-    )
-    fig3.update_layout(height=380, legend=dict(orientation="h", yanchor="bottom", y=1.02))
-    st.plotly_chart(fig3, use_container_width=True)
-else:
-    st.info("Year or quality column not found.")
-
-st.divider()
-
-# Chart 4: Country comparison bar chart
-st.subheader("🏳️ Country Comparison")
-if "country" in df_f.columns and "quality" in df_f.columns:
-    # Pick a single year for comparison — default to latest
-    if "year" in df_f.columns:
-        available_years = sorted(df_f["year"].unique(), reverse=True)
-        selected_year = st.selectbox("Select year for country comparison", available_years)
-        df_year = df_f[df_f["year"] == selected_year]
-    else:
-        df_year = df_f
-
-    country_q = df_year.groupby(["country", "quality"]).size().reset_index(name="count")
-    fig4 = px.bar(
-        country_q, x="country", y="count", color="quality",
+    tv = df_f.groupby(["water_type", "quality"]).size().reset_index(name="count")
+    fig2 = px.bar(
+        tv, x="water_type", y="count", color="quality",
         barmode="stack",
-        color_discrete_map={q: match_colour(q) for q in country_q["quality"].unique()},
-        labels={"country": "Country", "count": "Sites", "quality": "Quality"},
+        color_discrete_map={q: q_colour(q) for q in tv["quality"].unique()},
+        labels={"water_type": "Water Type", "count": "Sites", "quality": "Quality"},
     )
-    fig4.update_layout(height=420, xaxis_tickangle=-45, legend=dict(orientation="h"))
+    fig2.update_layout(height=350, margin=dict(t=10, b=10),
+                       legend=dict(orientation="h", yanchor="top", y=-0.1))
+    st.plotly_chart(fig2, use_container_width=True)
+
+st.divider()
+
+# ── Chart 3: Trend over time ──────────────────────────────────────────────────
+st.subheader("📈 Quality Trend Over Time")
+trend = df_f.groupby(["year", "quality"]).size().reset_index(name="count")
+fig3 = px.line(
+    trend, x="year", y="count", color="quality",
+    markers=True,
+    color_discrete_map={q: q_colour(q) for q in trend["quality"].unique()},
+    labels={"year": "Year", "count": "Number of Sites", "quality": "Quality"},
+)
+fig3.update_layout(height=400, legend=dict(orientation="h", yanchor="bottom", y=1.02))
+st.plotly_chart(fig3, use_container_width=True)
+
+st.divider()
+
+# ── Chart 4: Country comparison ───────────────────────────────────────────────
+st.subheader("🏳️ Country Comparison")
+available_years = sorted(df_f["year"].unique(), reverse=True)
+if available_years:
+    sel_year = st.selectbox("Select year for country comparison", available_years)
+    df_yr = df_f[df_f["year"] == sel_year]
+    cq = df_yr.groupby(["country", "quality"]).size().reset_index(name="count")
+    fig4 = px.bar(
+        cq, x="country", y="count", color="quality",
+        barmode="stack",
+        color_discrete_map={q: q_colour(q) for q in cq["quality"].unique()},
+        labels={"country": "Country Code", "count": "Sites", "quality": "Quality"},
+    )
+    fig4.update_layout(height=450, xaxis_tickangle=-45,
+                       legend=dict(orientation="h", yanchor="bottom", y=1.02))
     st.plotly_chart(fig4, use_container_width=True)
 else:
-    st.info("Country or quality column not found.")
+    st.info("No data for selected filters.")
 
 st.divider()
 
-# Chart 5: Excellent % by country map
-st.subheader("🗺️ Excellent Water Quality by Country")
-if "country" in df_f.columns and "quality" in df_f.columns:
-    total_by_country    = df_f.groupby("country").size().reset_index(name="total")
-    excellent_by_country = df_f[excellent_mask].groupby("country").size().reset_index(name="excellent") if "quality" in df_f.columns else pd.DataFrame()
-    if not excellent_by_country.empty:
-        map_df = total_by_country.merge(excellent_by_country, on="country", how="left").fillna(0)
-        map_df["pct_excellent"] = (map_df["excellent"] / map_df["total"] * 100).round(1)
-        fig5 = px.choropleth(
-            map_df,
-            locations="country",
-            locationmode="country names",
-            color="pct_excellent",
-            color_continuous_scale="Blues",
-            range_color=(0, 100),
-            labels={"pct_excellent": "% Excellent"},
-            scope="europe",
-        )
-        fig5.update_layout(height=500, margin=dict(t=10, b=10))
-        st.plotly_chart(fig5, use_container_width=True)
-    else:
-        st.info("Could not compute excellent % by country.")
-else:
-    st.info("Country or quality column not found.")
+# ── Chart 5: Choropleth map ───────────────────────────────────────────────────
+st.subheader("🗺️ Excellent Water Quality by Country (%)")
+total_by_c = df_f.groupby("country").size().reset_index(name="total")
+exc_by_c   = (df_f[df_f["quality"].str.lower().str.contains("excell")]
+              .groupby("country").size().reset_index(name="excellent"))
+map_df     = total_by_c.merge(exc_by_c, on="country", how="left").fillna(0)
+map_df["pct_excellent"]  = (map_df["excellent"] / map_df["total"] * 100).round(1)
+map_df["country_name"]   = map_df["country"].map(COUNTRY_NAMES).fillna(map_df["country"])
+
+fig5 = px.choropleth(
+    map_df,
+    locations="country_name",
+    locationmode="country names",
+    color="pct_excellent",
+    color_continuous_scale="Blues",
+    range_color=(0, 100),
+    scope="europe",
+    hover_name="country_name",
+    hover_data={"pct_excellent": ":.1f", "total": True, "excellent": True},
+    labels={"pct_excellent": "% Excellent"},
+)
+fig5.update_layout(height=550, margin=dict(t=10, b=10))
+st.plotly_chart(fig5, use_container_width=True)
 
 st.divider()
-st.caption("Dashboard built with Streamlit · Data source: European Environment Agency (EEA) Bathing Water Directive Dataset (1990–2024) · https://www.eea.europa.eu")
+st.caption("Dashboard built with Streamlit · Data: European Environment Agency — Bathing Water Directive (1990–2024) · eea.europa.eu")
