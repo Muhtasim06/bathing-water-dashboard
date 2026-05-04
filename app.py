@@ -69,7 +69,22 @@ if "year" not in df.columns:
 df["year"] = pd.to_numeric(df["year"], errors="coerce")
 df = df.dropna(subset=["year"])
 df["year"] = df["year"].astype(int)
-df["quality"] = df["quality"].astype(str).str.strip().str.title()
+df["quality"] = (df["quality"].astype(str)
+    .str.strip()
+    .str.replace(r"^\d+\s*-\s*", "", regex=True)  # remove "1 - " prefixes
+    .str.strip()
+    .str.title()
+)
+
+# Clean up water type labels
+def clean_water_type(wt):
+    wt = str(wt).replace("BathingWater", "").replace("bathing_water", "")
+    # camelCase to words
+    import re
+    wt = re.sub(r"([A-Z])", r" \1", wt).strip().title()
+    return wt if wt else "Unknown"
+
+df["water_type"] = df["water_type"].apply(clean_water_type)
 
 # Colour map
 COLOURS = {
