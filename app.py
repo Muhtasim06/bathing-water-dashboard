@@ -152,15 +152,13 @@ pio.templates["clean_light"] = go.layout.Template(
             gridcolor="#eeeeee",
             linecolor="#bdbdbd",
             tickfont=dict(color="#1a1a1a", size=12),
-            titlefont=dict(color="#424242", size=13),
-            showline=True,
+            title=dict(font=dict(color="#424242", size=13)),
         ),
         yaxis=dict(
             gridcolor="#eeeeee",
             linecolor="#bdbdbd",
             tickfont=dict(color="#1a1a1a", size=12),
-            titlefont=dict(color="#424242", size=13),
-            showline=True,
+            title=dict(font=dict(color="#424242", size=13)),
         ),
     )
 )
