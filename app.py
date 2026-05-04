@@ -98,11 +98,35 @@ st.markdown("""
         color: #006064;
     }
 
-    /* Sidebar */
+    /* Sidebar - light with dark text */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #e0f7fa 0%, #f4f8fb 100%);
+        background: linear-gradient(180deg, #e0f7fa 0%, #f4f8fb 100%) !important;
         border-right: 1px solid #b2ebf2;
     }
+    [data-testid="stSidebar"] * { color: #1a1a1a !important; }
+    [data-testid="stSidebar"] .stMarkdown p { color: #1a1a1a !important; }
+    [data-testid="stSidebar"] h3 { color: #006064 !important; }
+    [data-baseweb="tag"] span { color: white !important; }
+    [data-baseweb="tag"] { background-color: #006064 !important; }
+    
+    /* Multiselect pills text */
+    [data-baseweb="multi-select"] span { color: #1a1a1a !important; }
+    
+    /* All streamlit widget labels */
+    .stSlider label, .stMultiSelect label, .stRadio label, .stSelectSlider label {
+        color: #1a1a1a !important;
+    }
+    
+    /* Slider value text */
+    [data-testid="stSlider"] [data-testid="stMarkdownContainer"] p { color: #1a1a1a !important; }
+    
+    /* Dataframe - force light theme */
+    [data-testid="stDataFrame"] > div { background: white !important; }
+    .dvn-scroller { background: white !important; }
+    [data-testid="stDataFrame"] * { color: #1a1a1a !important; }
+    .stDataFrame thead tr th { background: #e0f7fa !important; color: #006064 !important; font-weight: 700 !important; }
+    .stDataFrame tbody tr td { color: #1a1a1a !important; background: white !important; }
+    .stDataFrame tbody tr:nth-child(even) td { background: #f4f8fb !important; }
 
     /* Dataframe */
     [data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; }
@@ -113,14 +137,31 @@ st.markdown("""
 import plotly.io as pio
 pio.templates["clean_light"] = go.layout.Template(
     layout=go.Layout(
-        font=dict(family="Arial, sans-serif", color="#1a1a1a", size=12),
+        font=dict(family="Arial, sans-serif", color="#1a1a1a", size=13),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         colorway=["#006064","#2E7D32","#F57F17","#B71C1C","#90A4AE","#558B2F"],
         title=dict(font=dict(color="#006064", size=15)),
-        legend=dict(font=dict(color="#1a1a1a"), bgcolor="rgba(255,255,255,0.8)"),
-        xaxis=dict(gridcolor="#f0f0f0", linecolor="#cfd8dc", tickfont=dict(color="#1a1a1a")),
-        yaxis=dict(gridcolor="#f0f0f0", linecolor="#cfd8dc", tickfont=dict(color="#1a1a1a")),
+        legend=dict(
+            font=dict(color="#1a1a1a", size=12),
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#e0e0e0",
+            borderwidth=1,
+        ),
+        xaxis=dict(
+            gridcolor="#eeeeee",
+            linecolor="#bdbdbd",
+            tickfont=dict(color="#1a1a1a", size=12),
+            titlefont=dict(color="#424242", size=13),
+            showline=True,
+        ),
+        yaxis=dict(
+            gridcolor="#eeeeee",
+            linecolor="#bdbdbd",
+            tickfont=dict(color="#1a1a1a", size=12),
+            titlefont=dict(color="#424242", size=13),
+            showline=True,
+        ),
     )
 )
 pio.templates.default = "clean_light"
