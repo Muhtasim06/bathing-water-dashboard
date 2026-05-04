@@ -159,7 +159,22 @@ with st.sidebar:
     year_range = st.slider("📅 Year Range", min_y, max_y, (2010, max_y))
 
     countries = sorted(df["country"].dropna().unique())
-    selected_countries = st.multiselect("🌍 Countries", countries, default=countries)
+    st.markdown("**🌍 Countries**")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("✅ Select All", key="sel_all_c", use_container_width=True):
+            st.session_state["countries_sel"] = countries
+    with col_b:
+        if st.button("❌ Clear", key="clr_all_c", use_container_width=True):
+            st.session_state["countries_sel"] = []
+    if "countries_sel" not in st.session_state:
+        st.session_state["countries_sel"] = countries
+    selected_countries = st.multiselect(
+        "Countries", countries,
+        default=None,
+        key="countries_sel",
+        label_visibility="collapsed"
+    )
 
     water_types = sorted(df["water_type"].dropna().unique())
     selected_types = st.multiselect("💧 Water Type", water_types, default=water_types)
