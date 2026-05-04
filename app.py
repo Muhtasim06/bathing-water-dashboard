@@ -15,85 +15,96 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* General */
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
-    
-    /* Hero banner */
+    /* Force light theme for the whole app */
+    .stApp { background-color: #f4f8fb; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; background-color: #f4f8fb; }
+
+    /* Hero banner — teal/ocean theme */
     .hero {
-        background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
+        background: linear-gradient(135deg, #006064 0%, #00838f 60%, #00acc1 100%);
         border-radius: 16px;
         padding: 2.2rem 2.5rem;
         margin-bottom: 1.5rem;
         color: white;
     }
-    .hero h1 { 
-        font-size: 2.1rem; font-weight: 800; margin: 0 0 0.4rem 0; 
+    .hero h1 {
+        font-size: 2.1rem; font-weight: 800; margin: 0 0 0.4rem 0;
         letter-spacing: -0.5px; color: white;
     }
-    .hero p { font-size: 1rem; margin: 0; opacity: 0.88; color: white; }
+    .hero p { font-size: 1rem; margin: 0; opacity: 0.92; color: white; }
     .hero .badge {
-        display: inline-block; background: rgba(255,255,255,0.18);
-        border-radius: 20px; padding: 3px 12px; font-size: 0.78rem;
-        margin-top: 0.8rem; margin-right: 6px; color: white;
+        display: inline-block; background: rgba(255,255,255,0.2);
+        border-radius: 20px; padding: 3px 14px; font-size: 0.78rem;
+        margin-top: 0.9rem; margin-right: 6px; color: white;
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     /* KPI cards */
     .kpi-card {
         background: white;
         border-radius: 14px;
-        padding: 1.2rem 1.4rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-        border-left: 5px solid #1565c0;
+        padding: 1.3rem 1.5rem;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+        border-top: 4px solid #00838f;
         height: 100%;
     }
-    .kpi-card.green  { border-left-color: #2e7d32; }
-    .kpi-card.orange { border-left-color: #e65100; }
-    .kpi-card.red    { border-left-color: #c62828; }
-    .kpi-label { font-size: 0.78rem; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .kpi-value { font-size: 2rem; font-weight: 800; color: #1a1a1a; line-height: 1; }
-    .kpi-sub   { font-size: 0.78rem; color: #888; margin-top: 4px; }
+    .kpi-card.green  { border-top-color: #2e7d32; }
+    .kpi-card.red    { border-top-color: #c62828; }
+    .kpi-card.orange { border-top-color: #e65100; }
+    .kpi-label { font-size: 0.72rem; font-weight: 700; color: #607d8b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .kpi-value { font-size: 2.1rem; font-weight: 800; color: #1a1a1a; line-height: 1; }
+    .kpi-sub   { font-size: 0.75rem; color: #90a4ae; margin-top: 5px; }
 
     /* Section headers */
     .section-header {
-        font-size: 1.15rem; font-weight: 700; color: #1565c0;
-        border-bottom: 2px solid #e3eaf5; padding-bottom: 0.4rem;
-        margin-bottom: 1rem;
+        font-size: 1.1rem; font-weight: 700; color: #00695c;
+        border-bottom: 2px solid #b2ebf2; padding-bottom: 0.5rem;
+        margin-bottom: 1.2rem; margin-top: 0.5rem;
     }
 
     /* Insight box */
     .insight-box {
-        background: #e8f0fe; border-radius: 12px;
-        padding: 1rem 1.3rem; margin-top: 0.5rem;
-        border-left: 4px solid #1565c0;
-        font-size: 0.88rem; color: #1a237e;
+        background: #e0f7fa; border-radius: 12px;
+        padding: 1rem 1.4rem; margin-top: 1rem;
+        border-left: 4px solid #00838f;
+        font-size: 0.88rem; color: #004d40;
     }
-    .insight-box b { color: #0d47a1; }
+    .insight-box b { color: #006064; }
 
-    /* Tab styling */
+    /* Chart wrapper — white card */
+    .chart-wrap {
+        background: white; border-radius: 14px;
+        padding: 1rem 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+    }
+
+    /* Tabs */
     div[data-testid="stTabs"] button {
-        font-weight: 600; font-size: 0.9rem;
+        font-weight: 600; font-size: 0.88rem; color: #546e7a;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        color: #006064;
     }
 
     /* Sidebar */
-    [data-testid="stSidebar"] { background: #f0f4ff; }
-    [data-testid="stSidebar"] .stMarkdown h3 { color: #1565c0; }
-
-    /* Chart containers */
-    .chart-card {
-        background: white; border-radius: 14px;
-        padding: 1.2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-        margin-bottom: 1rem;
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #e0f7fa 0%, #f4f8fb 100%);
+        border-right: 1px solid #b2ebf2;
     }
+
+    /* Dataframe */
+    [data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Colour palette ─────────────────────────────────────────────────────────────
 COLOURS = {
-    "Excellent":      "#1565C0",
-    "Good":           "#2E7D32",
-    "Sufficient":     "#E65100",
-    "Poor":           "#C62828",
-    "Not Classified": "#9E9E9E",
+    "Excellent":          "#006064",
+    "Good":               "#2E7D32",
+    "Sufficient":         "#F57F17",
+    "Poor":               "#B71C1C",
+    "Not Classified":     "#90A4AE",
     "Good Or Sufficient": "#558B2F",
 }
 
@@ -289,12 +300,12 @@ with tab1:
             hovertemplate="<b>%{label}</b><br>Sites: %{value:,}<br>Share: %{percent}<extra></extra>",
         ))
         fig1.update_layout(
-            title=dict(text="Quality Rating Distribution", font_size=15, font_color="#1565c0"),
+            title=dict(text="Quality Rating Distribution", font_size=15, font_color="#006064"),
             height=370,
             margin=dict(t=50, b=20, l=10, r=10),
             legend=dict(orientation="h", yanchor="top", y=-0.05),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="#ffffff",
+            plot_bgcolor="#ffffff",
         )
         st.plotly_chart(fig1, use_container_width=True)
 
@@ -307,12 +318,12 @@ with tab1:
             labels={"water_type": "Water Type", "count": "Number of Sites", "quality": "Quality"},
         )
         fig2.update_layout(
-            title=dict(text="Sites by Water Type & Quality", font_size=15, font_color="#1565c0"),
+            title=dict(text="Sites by Water Type & Quality", font_size=15, font_color="#006064"),
             height=370,
             margin=dict(t=50, b=20, l=10, r=10),
             legend=dict(orientation="h", yanchor="top", y=-0.05),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="#ffffff",
+            plot_bgcolor="#ffffff",
             xaxis=dict(showgrid=False),
             yaxis=dict(gridcolor="#f0f0f0"),
         )
@@ -340,12 +351,12 @@ with tab2:
     )
     fig3.update_traces(line=dict(width=2.5), marker=dict(size=5))
     fig3.update_layout(
-        title=dict(text="Bathing Water Quality Trend (1990–2024)", font_size=15, font_color="#1565c0"),
+        title=dict(text="Bathing Water Quality Trend (1990–2024)", font_size=15, font_color="#006064"),
         height=420,
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
         xaxis=dict(showgrid=False, title="Year"),
         yaxis=dict(gridcolor="#f0f0f0", title="Number of Sites"),
     )
@@ -369,10 +380,10 @@ with tab2:
     )
     fig4.update_traces(fill="tozeroy", fillcolor="rgba(21,101,192,0.12)", line_color="#1565C0")
     fig4.update_layout(
-        title=dict(text="Total Annual Assessments Across Europe", font_size=15, font_color="#1565c0"),
+        title=dict(text="Total Annual Assessments Across Europe", font_size=15, font_color="#006064"),
         height=300,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
         xaxis=dict(showgrid=False),
         yaxis=dict(gridcolor="#f0f0f0"),
         margin=dict(t=50, b=20),
@@ -402,12 +413,12 @@ with tab3:
             labels={"country": "Country Code", "count": "Number of Sites", "quality": "Quality"},
         )
         fig5.update_layout(
-            title=dict(text=f"Bathing Water Quality by Country — {sel_year}", font_size=15, font_color="#1565c0"),
+            title=dict(text=f"Bathing Water Quality by Country — {sel_year}", font_size=15, font_color="#006064"),
             height=430,
             xaxis_tickangle=-45,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="#ffffff",
+            plot_bgcolor="#ffffff",
             xaxis=dict(showgrid=False),
             yaxis=dict(gridcolor="#f0f0f0"),
             bargap=0.25,
@@ -488,12 +499,25 @@ with tab4:
         labels={"pct_excellent": "% Excellent", "pct_poor": "% Poor", "total": "Total Sites"},
     )
     fig6.update_layout(
-        title=dict(text=f"Europe — {title} ({year_range[0]}–{year_range[1]})", font_size=15, font_color="#1565c0"),
+        title=dict(text=f"Europe — {title} ({year_range[0]}–{year_range[1]})", font_size=15, font_color="#006064"),
         height=560,
         margin=dict(t=50, b=10, l=0, r=0),
         paper_bgcolor="rgba(0,0,0,0)",
         coloraxis_colorbar=dict(title=title, thickness=14),
-        geo=dict(bgcolor="rgba(0,0,0,0)", lakecolor="#d0e8f7", landcolor="#f5f5f5", showocean=True, oceancolor="#d0e8f7"),
+        geo=dict(
+            bgcolor="#f4f8fb",
+            lakecolor="#b2ebf2",
+            landcolor="#eceff1",
+            showocean=True,
+            oceancolor="#b2ebf2",
+            showlakes=True,
+            showrivers=True,
+            rivercolor="#b2ebf2",
+            showcountries=True,
+            countrycolor="#cfd8dc",
+            showcoastlines=True,
+            coastlinecolor="#90a4ae",
+        ),
     )
     st.plotly_chart(fig6, use_container_width=True)
 
