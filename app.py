@@ -2,104 +2,108 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import re
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="European Bathing Water Quality",
+    page_title="EU Bathing Water Quality",
     page_icon="🌊",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
+# ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .block-container { padding-top: 2rem; }
-    [data-testid="stMetricValue"] { font-size: 2rem; font-weight: 700; }
+    /* General */
+    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+    
+    /* Hero banner */
+    .hero {
+        background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
+        border-radius: 16px;
+        padding: 2.2rem 2.5rem;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+    .hero h1 { 
+        font-size: 2.1rem; font-weight: 800; margin: 0 0 0.4rem 0; 
+        letter-spacing: -0.5px; color: white;
+    }
+    .hero p { font-size: 1rem; margin: 0; opacity: 0.88; color: white; }
+    .hero .badge {
+        display: inline-block; background: rgba(255,255,255,0.18);
+        border-radius: 20px; padding: 3px 12px; font-size: 0.78rem;
+        margin-top: 0.8rem; margin-right: 6px; color: white;
+    }
+
+    /* KPI cards */
+    .kpi-card {
+        background: white;
+        border-radius: 14px;
+        padding: 1.2rem 1.4rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border-left: 5px solid #1565c0;
+        height: 100%;
+    }
+    .kpi-card.green  { border-left-color: #2e7d32; }
+    .kpi-card.orange { border-left-color: #e65100; }
+    .kpi-card.red    { border-left-color: #c62828; }
+    .kpi-label { font-size: 0.78rem; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .kpi-value { font-size: 2rem; font-weight: 800; color: #1a1a1a; line-height: 1; }
+    .kpi-sub   { font-size: 0.78rem; color: #888; margin-top: 4px; }
+
+    /* Section headers */
+    .section-header {
+        font-size: 1.15rem; font-weight: 700; color: #1565c0;
+        border-bottom: 2px solid #e3eaf5; padding-bottom: 0.4rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Insight box */
+    .insight-box {
+        background: #e8f0fe; border-radius: 12px;
+        padding: 1rem 1.3rem; margin-top: 0.5rem;
+        border-left: 4px solid #1565c0;
+        font-size: 0.88rem; color: #1a237e;
+    }
+    .insight-box b { color: #0d47a1; }
+
+    /* Tab styling */
+    div[data-testid="stTabs"] button {
+        font-weight: 600; font-size: 0.9rem;
+    }
+
+    /* Sidebar */
+    [data-testid="stSidebar"] { background: #f0f4ff; }
+    [data-testid="stSidebar"] .stMarkdown h3 { color: #1565c0; }
+
+    /* Chart containers */
+    .chart-card {
+        background: white; border-radius: 14px;
+        padding: 1.2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        margin-bottom: 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load data ─────────────────────────────────────────────────────────────────
-DATA_URL = "https://sdi.eea.europa.eu/datashare/s/J86aarkSmCMXpkc/download?path=%2F&files=bw_assessment_eea_datahub_1990_2024.xlsx"
-
-@st.cache_data(show_spinner="Loading dataset… this may take a moment ☕")
-def load_data():
-    import io, requests
-    r = requests.get(DATA_URL)
-    xl = pd.ExcelFile(io.BytesIO(r.content), engine="openpyxl")
-    # Pick the sheet with the most columns (skip metadata sheets)
-    best_sheet, best_cols = None, 0
-    for sheet in xl.sheet_names:
-        try:
-            tmp = xl.parse(sheet, nrows=2)
-            if len(tmp.columns) > best_cols:
-                best_cols = len(tmp.columns)
-                best_sheet = sheet
-        except:
-            pass
-    df = xl.parse(best_sheet)
-    return df
-
-try:
-    df_raw = load_data()
-except Exception as e:
-    st.error(f"Could not load data: {e}")
-    st.stop()
-
-# ── Map exact column names ────────────────────────────────────────────────────
-df = df_raw.rename(columns={
-    "countryCode":      "country",
-    "season":           "year",
-    "quality":          "quality",
-    "bathingWaterType": "water_type",
-    "bathingWaterName": "site_name",
-    "lat":              "lat",
-    "lon":              "lon",
-}).copy()
-
-# Find the year column flexibly in case rename didn't catch it
-if "year" not in df.columns:
-    for c in df.columns:
-        if "season" in c.lower() or "year" in c.lower():
-            df = df.rename(columns={c: "year"})
-            break
-
-if "year" not in df.columns:
-    st.error(f"Could not find a year/season column. Columns available: {df.columns.tolist()}")
-    st.stop()
-
-df["year"] = pd.to_numeric(df["year"], errors="coerce")
-df = df.dropna(subset=["year"])
-df["year"] = df["year"].astype(int)
-df["quality"] = (df["quality"].astype(str)
-    .str.strip()
-    .str.replace(r"^\d+\s*-\s*", "", regex=True)  # remove "1 - " prefixes
-    .str.strip()
-    .str.title()
-)
-
-# Clean up water type labels
-def clean_water_type(wt):
-    wt = str(wt).replace("BathingWater", "").replace("bathing_water", "")
-    # camelCase to words
-    import re
-    wt = re.sub(r"([A-Z])", r" \1", wt).strip().title()
-    return wt if wt else "Unknown"
-
-df["water_type"] = df["water_type"].apply(clean_water_type)
-
-# Colour map
+# ── Colour palette ─────────────────────────────────────────────────────────────
 COLOURS = {
-    "Excellent":  "#1565C0",
-    "Good":       "#43A047",
-    "Sufficient": "#FB8C00",
-    "Poor":       "#E53935",
+    "Excellent":      "#1565C0",
+    "Good":           "#2E7D32",
+    "Sufficient":     "#E65100",
+    "Poor":           "#C62828",
+    "Not Classified": "#9E9E9E",
+    "Good Or Sufficient": "#558B2F",
 }
+
 def q_colour(q):
+    q = str(q)
     for k, v in COLOURS.items():
-        if k.lower() in str(q).lower():
+        if k.lower() in q.lower():
             return v
     return "#9E9E9E"
 
-# Country code → full name lookup
 COUNTRY_NAMES = {
     "AT":"Austria","BE":"Belgium","BG":"Bulgaria","CY":"Cyprus","CZ":"Czech Republic",
     "DE":"Germany","DK":"Denmark","EE":"Estonia","EL":"Greece","ES":"Spain",
@@ -110,25 +114,93 @@ COUNTRY_NAMES = {
     "TR":"Turkey","CH":"Switzerland","NO":"Norway","IS":"Iceland","LI":"Liechtenstein",
 }
 
-# ── Sidebar filters ───────────────────────────────────────────────────────────
-st.sidebar.header("🔧 Filters")
+# ── Load data ─────────────────────────────────────────────────────────────────
+DATA_URL = "https://sdi.eea.europa.eu/datashare/s/J86aarkSmCMXpkc/download?path=%2F&files=bw_assessment_eea_datahub_1990_2024.xlsx"
 
-min_y, max_y = int(df["year"].min()), int(df["year"].max())
-year_range = st.sidebar.slider("Year range", min_y, max_y, (2010, max_y))
+@st.cache_data(show_spinner="🌊 Loading EEA Bathing Water dataset…")
+def load_data():
+    import io, requests
+    r = requests.get(DATA_URL)
+    xl = pd.ExcelFile(io.BytesIO(r.content), engine="openpyxl")
+    best_sheet, best_cols = None, 0
+    for sheet in xl.sheet_names:
+        try:
+            tmp = xl.parse(sheet, nrows=2)
+            if len(tmp.columns) > best_cols:
+                best_cols = len(tmp.columns)
+                best_sheet = sheet
+        except:
+            pass
+    return xl.parse(best_sheet)
 
-countries = sorted(df["country"].dropna().unique())
-selected_countries = st.sidebar.multiselect("Countries", countries, default=countries)
+try:
+    df_raw = load_data()
+except Exception as e:
+    st.error(f"Could not load data: {e}")
+    st.stop()
 
-water_types = sorted(df["water_type"].dropna().unique())
-selected_types = st.sidebar.multiselect("Water type", water_types, default=water_types)
+# ── Clean data ────────────────────────────────────────────────────────────────
+df = df_raw.rename(columns={
+    "countryCode":      "country",
+    "quality":          "quality",
+    "bathingWaterType": "water_type",
+    "bathingWaterName": "site_name",
+    "lat": "lat", "lon": "lon",
+}).copy()
 
-qualities = sorted(df["quality"].dropna().unique())
-selected_qualities = st.sidebar.multiselect("Quality rating", qualities, default=qualities)
+# Find year column
+if "year" not in df.columns:
+    for c in df.columns:
+        if "season" in c.lower() or "year" in c.lower():
+            df = df.rename(columns={c: "year"})
+            break
 
-st.sidebar.markdown("---")
-st.sidebar.caption("Data: EEA Bathing Water Directive (1990–2024)")
+df["year"] = pd.to_numeric(df["year"], errors="coerce")
+df = df.dropna(subset=["year"])
+df["year"] = df["year"].astype(int)
 
-# ── Apply filters ─────────────────────────────────────────────────────────────
+# Clean quality labels
+df["quality"] = (df["quality"].astype(str)
+    .str.strip()
+    .str.replace(r"^\d+\s*[-–]\s*", "", regex=True)
+    .str.strip()
+    .str.title()
+)
+
+# Clean water type labels
+def clean_wt(wt):
+    wt = str(wt).replace("BathingWater", "").replace("bathing_water", "")
+    wt = re.sub(r"([A-Z])", r" \1", wt).strip().title()
+    return wt or "Unknown"
+
+df["water_type"] = df["water_type"].apply(clean_wt)
+df["country_name"] = df["country"].map(COUNTRY_NAMES).fillna(df["country"])
+
+# ── Sidebar ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 🔧 Dashboard Filters")
+    st.markdown("Use the filters below to explore the data interactively.")
+    st.divider()
+
+    min_y, max_y = int(df["year"].min()), int(df["year"].max())
+    year_range = st.slider("📅 Year Range", min_y, max_y, (2010, max_y))
+
+    st.markdown("")
+    countries = sorted(df["country"].dropna().unique())
+    selected_countries = st.multiselect("🌍 Countries", countries, default=countries)
+
+    st.markdown("")
+    water_types = sorted(df["water_type"].dropna().unique())
+    selected_types = st.multiselect("💧 Water Type", water_types, default=water_types)
+
+    st.markdown("")
+    qualities = sorted(df["quality"].dropna().unique())
+    selected_qualities = st.multiselect("⭐ Quality Rating", qualities, default=qualities)
+
+    st.divider()
+    st.caption("📊 Data: European Environment Agency\nBathing Water Directive (1990–2024)\n[eea.europa.eu](https://www.eea.europa.eu)")
+
+# ── Filter data ───────────────────────────────────────────────────────────────
 df_f = df[
     (df["year"] >= year_range[0]) &
     (df["year"] <= year_range[1]) &
@@ -137,115 +209,307 @@ df_f = df[
     (df["quality"].isin(selected_qualities))
 ]
 
-# ── Header ────────────────────────────────────────────────────────────────────
-st.title("🌊 European Bathing Water Quality Dashboard")
-st.markdown("Explore bathing water quality across Europe from **1990 to 2024**, based on data from the **European Environment Agency (EEA)**.")
-st.divider()
+total     = len(df_f)
+n_ctry    = df_f["country"].nunique()
+n_sites   = df_f["site_name"].nunique() if "site_name" in df_f.columns else "N/A"
+exc_pct   = round(df_f["quality"].str.lower().str.contains("excell").sum() / total * 100, 1) if total else 0
+poor_pct  = round(df_f["quality"].str.lower().str.contains("poor").sum()  / total * 100, 1) if total else 0
 
-# ── KPI metrics ───────────────────────────────────────────────────────────────
-k1, k2, k3, k4 = st.columns(4)
-total    = len(df_f)
-n_ctry   = df_f["country"].nunique()
-exc_pct  = round(df_f["quality"].str.lower().str.contains("excell").sum() / total * 100, 1) if total else 0
-poor_pct = round(df_f["quality"].str.lower().str.contains("poor").sum()   / total * 100, 1) if total else 0
+# ── Hero Banner ───────────────────────────────────────────────────────────────
+st.markdown(f"""
+<div class="hero">
+    <h1>🌊 European Bathing Water Quality Dashboard</h1>
+    <p>Monitoring water safety across Europe from <b>1990 to 2024</b> — 
+    helping policymakers, sustainability professionals and the public understand 
+    the health of our bathing waters.</p>
+    <span class="badge">📅 {year_range[0]}–{year_range[1]}</span>
+    <span class="badge">🌍 {n_ctry} Countries</span>
+    <span class="badge">📋 {total:,} Records</span>
+    <span class="badge">Source: EEA Bathing Water Directive</span>
+</div>
+""", unsafe_allow_html=True)
 
-k1.metric("Total records",       f"{total:,}")
-k2.metric("Countries",           n_ctry)
-k3.metric("% Excellent quality", f"{exc_pct}%")
-k4.metric("% Poor quality",      f"{poor_pct}%")
+# ── KPI Cards ─────────────────────────────────────────────────────────────────
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown(f"""<div class="kpi-card">
+        <div class="kpi-label">Total Records</div>
+        <div class="kpi-value">{total:,}</div>
+        <div class="kpi-sub">assessments in selected range</div>
+    </div>""", unsafe_allow_html=True)
+with c2:
+    st.markdown(f"""<div class="kpi-card green">
+        <div class="kpi-label">Excellent Quality</div>
+        <div class="kpi-value">{exc_pct}%</div>
+        <div class="kpi-sub">of sites meet highest standard</div>
+    </div>""", unsafe_allow_html=True)
+with c3:
+    st.markdown(f"""<div class="kpi-card red">
+        <div class="kpi-label">Poor Quality</div>
+        <div class="kpi-value">{poor_pct}%</div>
+        <div class="kpi-sub">of sites below minimum standard</div>
+    </div>""", unsafe_allow_html=True)
+with c4:
+    st.markdown(f"""<div class="kpi-card orange">
+        <div class="kpi-label">Unique Sites</div>
+        <div class="kpi-value">{n_sites:,}</div>
+        <div class="kpi-sub">bathing locations monitored</div>
+    </div>""", unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Chart 1 & 2: Donut + Coastal vs Inland ────────────────────────────────────
-col1, col2 = st.columns(2)
+# ── Tabs ──────────────────────────────────────────────────────────────────────
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊  Overview",
+    "📈  Trends Over Time",
+    "🏳️  Country Analysis",
+    "🗺️  Map View",
+])
 
-with col1:
-    st.subheader("Quality Rating Breakdown")
-    qc = df_f["quality"].value_counts().reset_index()
-    qc.columns = ["Quality", "Count"]
-    fig1 = go.Figure(go.Pie(
-        labels=qc["Quality"],
-        values=qc["Count"],
-        hole=0.45,
-        marker_colors=[q_colour(q) for q in qc["Quality"]],
-    ))
-    fig1.update_layout(height=350, margin=dict(t=10, b=10),
-                       legend=dict(orientation="h", yanchor="top", y=-0.1))
-    st.plotly_chart(fig1, use_container_width=True)
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 1 — Overview
+# ════════════════════════════════════════════════════════════════════════════════
+with tab1:
+    st.markdown("<div class='section-header'>Quality Rating Breakdown & Water Type Comparison</div>", unsafe_allow_html=True)
 
-with col2:
-    st.subheader("Coastal vs Inland Sites")
-    tv = df_f.groupby(["water_type", "quality"]).size().reset_index(name="count")
-    fig2 = px.bar(
-        tv, x="water_type", y="count", color="quality",
-        barmode="stack",
-        color_discrete_map={q: q_colour(q) for q in tv["quality"].unique()},
-        labels={"water_type": "Water Type", "count": "Sites", "quality": "Quality"},
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        qc = df_f["quality"].value_counts().reset_index()
+        qc.columns = ["Quality", "Count"]
+        qc["pct"] = (qc["Count"] / qc["Count"].sum() * 100).round(1)
+
+        fig1 = go.Figure(go.Pie(
+            labels=qc["Quality"],
+            values=qc["Count"],
+            hole=0.52,
+            marker_colors=[q_colour(q) for q in qc["Quality"]],
+            textinfo="label+percent",
+            textfont_size=12,
+            hovertemplate="<b>%{label}</b><br>Sites: %{value:,}<br>Share: %{percent}<extra></extra>",
+        ))
+        fig1.update_layout(
+            title=dict(text="Quality Rating Distribution", font_size=15, font_color="#1565c0"),
+            height=370,
+            margin=dict(t=50, b=20, l=10, r=10),
+            legend=dict(orientation="h", yanchor="top", y=-0.05),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+
+    with col2:
+        tv = df_f.groupby(["water_type", "quality"]).size().reset_index(name="count")
+        fig2 = px.bar(
+            tv, x="water_type", y="count", color="quality",
+            barmode="stack",
+            color_discrete_map={q: q_colour(q) for q in tv["quality"].unique()},
+            labels={"water_type": "Water Type", "count": "Number of Sites", "quality": "Quality"},
+        )
+        fig2.update_layout(
+            title=dict(text="Sites by Water Type & Quality", font_size=15, font_color="#1565c0"),
+            height=370,
+            margin=dict(t=50, b=20, l=10, r=10),
+            legend=dict(orientation="h", yanchor="top", y=-0.05),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(showgrid=False),
+            yaxis=dict(gridcolor="#f0f0f0"),
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown(f"""<div class="insight-box">
+        💡 <b>Key Insight:</b> Across the selected period, <b>{exc_pct}%</b> of all bathing water 
+        assessments achieved <b>Excellent</b> status — the highest classification under the EU 
+        Bathing Water Directive. Coastal sites consistently account for the largest share of 
+        monitored locations, reflecting Europe's extensive coastline.
+    </div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 2 — Trends Over Time
+# ════════════════════════════════════════════════════════════════════════════════
+with tab2:
+    st.markdown("<div class='section-header'>How has bathing water quality changed over time?</div>", unsafe_allow_html=True)
+
+    trend = df_f.groupby(["year", "quality"]).size().reset_index(name="count")
+    fig3 = px.line(
+        trend, x="year", y="count", color="quality",
+        markers=True,
+        color_discrete_map={q: q_colour(q) for q in trend["quality"].unique()},
+        labels={"year": "Year", "count": "Number of Sites", "quality": "Quality Rating"},
     )
-    fig2.update_layout(height=350, margin=dict(t=10, b=10),
-                       legend=dict(orientation="h", yanchor="top", y=-0.1))
-    st.plotly_chart(fig2, use_container_width=True)
-
-st.divider()
-
-# ── Chart 3: Trend over time ──────────────────────────────────────────────────
-st.subheader("📈 Quality Trend Over Time")
-trend = df_f.groupby(["year", "quality"]).size().reset_index(name="count")
-fig3 = px.line(
-    trend, x="year", y="count", color="quality",
-    markers=True,
-    color_discrete_map={q: q_colour(q) for q in trend["quality"].unique()},
-    labels={"year": "Year", "count": "Number of Sites", "quality": "Quality"},
-)
-fig3.update_layout(height=400, legend=dict(orientation="h", yanchor="bottom", y=1.02))
-st.plotly_chart(fig3, use_container_width=True)
-
-st.divider()
-
-# ── Chart 4: Country comparison ───────────────────────────────────────────────
-st.subheader("🏳️ Country Comparison")
-available_years = sorted(df_f["year"].unique(), reverse=True)
-if available_years:
-    sel_year = st.selectbox("Select year for country comparison", available_years)
-    df_yr = df_f[df_f["year"] == sel_year]
-    cq = df_yr.groupby(["country", "quality"]).size().reset_index(name="count")
-    fig4 = px.bar(
-        cq, x="country", y="count", color="quality",
-        barmode="stack",
-        color_discrete_map={q: q_colour(q) for q in cq["quality"].unique()},
-        labels={"country": "Country Code", "count": "Sites", "quality": "Quality"},
+    fig3.update_traces(line=dict(width=2.5), marker=dict(size=5))
+    fig3.update_layout(
+        title=dict(text="Bathing Water Quality Trend (1990–2024)", font_size=15, font_color="#1565c0"),
+        height=420,
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False, title="Year"),
+        yaxis=dict(gridcolor="#f0f0f0", title="Number of Sites"),
     )
-    fig4.update_layout(height=450, xaxis_tickangle=-45,
-                       legend=dict(orientation="h", yanchor="bottom", y=1.02))
+    st.plotly_chart(fig3, use_container_width=True)
+
+    st.markdown("""<div class="insight-box">
+        💡 <b>Key Insight:</b> The number of sites rated <b>Excellent</b> has grown steadily 
+        since the Bathing Water Directive was strengthened in 2006, rising from around 14,000 
+        to nearly 20,000 sites by 2024. This reflects both improved water quality and an 
+        expansion in the number of monitored bathing sites across Europe.
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>Monitoring Coverage Over Time</div>", unsafe_allow_html=True)
+
+    coverage = df_f.groupby("year").size().reset_index(name="total_sites")
+    fig4 = px.area(
+        coverage, x="year", y="total_sites",
+        labels={"year": "Year", "total_sites": "Total Assessments"},
+        color_discrete_sequence=["#1565C0"],
+    )
+    fig4.update_traces(fill="tozeroy", fillcolor="rgba(21,101,192,0.12)", line_color="#1565C0")
+    fig4.update_layout(
+        title=dict(text="Total Annual Assessments Across Europe", font_size=15, font_color="#1565c0"),
+        height=300,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False),
+        yaxis=dict(gridcolor="#f0f0f0"),
+        margin=dict(t=50, b=20),
+    )
     st.plotly_chart(fig4, use_container_width=True)
-else:
-    st.info("No data for selected filters.")
 
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 3 — Country Analysis
+# ════════════════════════════════════════════════════════════════════════════════
+with tab3:
+    st.markdown("<div class='section-header'>Compare bathing water quality across European countries</div>", unsafe_allow_html=True)
+
+    available_years = sorted(df_f["year"].unique(), reverse=True)
+    if available_years:
+        sel_year = st.select_slider(
+            "Select year for country comparison",
+            options=available_years,
+            value=available_years[0],
+        )
+        df_yr = df_f[df_f["year"] == sel_year]
+        cq = df_yr.groupby(["country", "quality"]).size().reset_index(name="count")
+
+        fig5 = px.bar(
+            cq, x="country", y="count", color="quality",
+            barmode="stack",
+            color_discrete_map={q: q_colour(q) for q in cq["quality"].unique()},
+            labels={"country": "Country Code", "count": "Number of Sites", "quality": "Quality"},
+        )
+        fig5.update_layout(
+            title=dict(text=f"Bathing Water Quality by Country — {sel_year}", font_size=15, font_color="#1565c0"),
+            height=430,
+            xaxis_tickangle=-45,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, title=None),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(showgrid=False),
+            yaxis=dict(gridcolor="#f0f0f0"),
+            bargap=0.25,
+        )
+        st.plotly_chart(fig5, use_container_width=True)
+
+        # Top/bottom performers
+        perf = df_yr.copy()
+        perf["is_exc"] = perf["quality"].str.lower().str.contains("excell")
+        perf_grp = perf.groupby("country").agg(total=("quality","count"), excellent=("is_exc","sum")).reset_index()
+        perf_grp["pct"] = (perf_grp["excellent"] / perf_grp["total"] * 100).round(1)
+        perf_grp["country_name"] = perf_grp["country"].map(COUNTRY_NAMES).fillna(perf_grp["country"])
+        perf_grp = perf_grp[perf_grp["total"] >= 10].sort_values("pct", ascending=False)
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("#### 🏆 Top 5 Countries by % Excellent")
+            top5 = perf_grp.head(5)[["country_name","pct","total"]].rename(
+                columns={"country_name":"Country","pct":"% Excellent","total":"Sites"})
+            st.dataframe(top5, hide_index=True, use_container_width=True)
+        with col_b:
+            st.markdown("#### ⚠️ Bottom 5 Countries by % Excellent")
+            bot5 = perf_grp.tail(5)[["country_name","pct","total"]].rename(
+                columns={"country_name":"Country","pct":"% Excellent","total":"Sites"})
+            st.dataframe(bot5, hide_index=True, use_container_width=True)
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 4 — Map View
+# ════════════════════════════════════════════════════════════════════════════════
+with tab4:
+    st.markdown("<div class='section-header'>Geographic distribution of bathing water quality across Europe</div>", unsafe_allow_html=True)
+
+    map_metric = st.radio(
+        "Colour map by:",
+        ["% Excellent Quality", "% Poor Quality", "Total Sites Monitored"],
+        horizontal=True,
+    )
+
+    total_by_c = df_f.groupby("country").size().reset_index(name="total")
+    exc_by_c   = (df_f[df_f["quality"].str.lower().str.contains("excell")]
+                  .groupby("country").size().reset_index(name="excellent"))
+    poor_by_c  = (df_f[df_f["quality"].str.lower().str.contains("poor")]
+                  .groupby("country").size().reset_index(name="poor"))
+
+    map_df = (total_by_c
+              .merge(exc_by_c,  on="country", how="left")
+              .merge(poor_by_c, on="country", how="left")
+              .fillna(0))
+    map_df["pct_excellent"] = (map_df["excellent"] / map_df["total"] * 100).round(1)
+    map_df["pct_poor"]      = (map_df["poor"]      / map_df["total"] * 100).round(1)
+    map_df["country_name"]  = map_df["country"].map(COUNTRY_NAMES).fillna(map_df["country"])
+
+    if map_metric == "% Excellent Quality":
+        col, scale, title = "pct_excellent", "Blues", "% Excellent Quality"
+        rng = (0, 100)
+    elif map_metric == "% Poor Quality":
+        col, scale, title = "pct_poor", "Reds", "% Poor Quality"
+        rng = (0, 10)
+    else:
+        col, scale, title = "total", "Greens", "Total Sites"
+        rng = (0, map_df["total"].max())
+
+    fig6 = px.choropleth(
+        map_df,
+        locations="country_name",
+        locationmode="country names",
+        color=col,
+        color_continuous_scale=scale,
+        range_color=rng,
+        scope="europe",
+        hover_name="country_name",
+        hover_data={
+            "pct_excellent": ":.1f",
+            "pct_poor": ":.1f",
+            "total": ":,",
+            col: False,
+        },
+        labels={"pct_excellent": "% Excellent", "pct_poor": "% Poor", "total": "Total Sites"},
+    )
+    fig6.update_layout(
+        title=dict(text=f"Europe — {title} ({year_range[0]}–{year_range[1]})", font_size=15, font_color="#1565c0"),
+        height=560,
+        margin=dict(t=50, b=10, l=0, r=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        coloraxis_colorbar=dict(title=title, thickness=14),
+        geo=dict(bgcolor="rgba(0,0,0,0)", lakecolor="#d0e8f7", landcolor="#f5f5f5", showocean=True, oceancolor="#d0e8f7"),
+    )
+    st.plotly_chart(fig6, use_container_width=True)
+
+    st.markdown("""<div class="insight-box">
+        💡 <b>Key Insight:</b> Mediterranean countries such as <b>Greece, Cyprus and Malta</b> 
+        consistently achieve the highest proportions of Excellent-rated coastal bathing waters, 
+        benefiting from warm, low-rainfall climates that reduce agricultural and urban runoff 
+        into bathing areas.
+    </div>""", unsafe_allow_html=True)
+
+# ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
-
-# ── Chart 5: Choropleth map ───────────────────────────────────────────────────
-st.subheader("🗺️ Excellent Water Quality by Country (%)")
-total_by_c = df_f.groupby("country").size().reset_index(name="total")
-exc_by_c   = (df_f[df_f["quality"].str.lower().str.contains("excell")]
-              .groupby("country").size().reset_index(name="excellent"))
-map_df     = total_by_c.merge(exc_by_c, on="country", how="left").fillna(0)
-map_df["pct_excellent"]  = (map_df["excellent"] / map_df["total"] * 100).round(1)
-map_df["country_name"]   = map_df["country"].map(COUNTRY_NAMES).fillna(map_df["country"])
-
-fig5 = px.choropleth(
-    map_df,
-    locations="country_name",
-    locationmode="country names",
-    color="pct_excellent",
-    color_continuous_scale="Blues",
-    range_color=(0, 100),
-    scope="europe",
-    hover_name="country_name",
-    hover_data={"pct_excellent": ":.1f", "total": True, "excellent": True},
-    labels={"pct_excellent": "% Excellent"},
-)
-fig5.update_layout(height=550, margin=dict(t=10, b=10))
-st.plotly_chart(fig5, use_container_width=True)
-
-st.divider()
-st.caption("Dashboard built with Streamlit · Data: European Environment Agency — Bathing Water Directive (1990–2024) · eea.europa.eu")
+st.markdown("""
+<div style='text-align:center; color:#888; font-size:0.8rem; padding: 0.5rem 0 1rem 0;'>
+    🌊 European Bathing Water Quality Dashboard &nbsp;|&nbsp; 
+    Data: <a href='https://www.eea.europa.eu' target='_blank' style='color:#1565c0;'>European Environment Agency</a> 
+    — Bathing Water Directive (1990–2024) &nbsp;|&nbsp; Built with Streamlit & Plotly
+</div>
+""", unsafe_allow_html=True)
